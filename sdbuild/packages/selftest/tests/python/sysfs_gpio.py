@@ -1,29 +1,28 @@
 # Verify sysfs GPIO interface is available.
 
-# p: manifest params dict for this test (from selftest.json "params").
 from results import bad, ok, sh, main_entry
 
 
 def run(p=None):
-    # PS GPIO controller label by family: Zynq, ZynqMP, Versal.
-    ps_gpio_labels = ("zynq_gpio", "zynqmp_gpio", "versal_gpio")
+    label = (p or {}).get("label")
+    if not label:
+        bad("manifest params.label required")
+        return
     _, labels = sh("cat /sys/class/gpio/gpiochip*/label 2>/dev/null | tr '\\n' ' '")
-    found = [l for l in labels.split() if l in ps_gpio_labels]
-    if found:
-        ok("PS GPIO controller exposed: %s (labels: %s)" % (found[0], labels))
+    if label in labels.split():
+        ok("%s controller exposed (labels: %s)" % (label, labels))
     else:
-        bad("no PS GPIO gpiochip label, expected one of %s (labels: %s)"
-            % ("/".join(ps_gpio_labels), labels or "none"))
+        bad("no %s gpiochip label (labels: %s)" % (label, labels or "none"))
     try:
         from pynq import GPIO
 
-        base = GPIO.get_gpio_base()
+        base = GPIO.get_gpio_base(label)
         if base is not None:
-            ok("pynq GPIO.get_gpio_base() resolved a base (not None)")
+            ok("pynq GPIO.get_gpio_base(%r) resolved a base (not None)" % label)
         else:
-            bad("pynq GPIO.get_gpio_base() is None")
+            bad("pynq GPIO.get_gpio_base(%r) is None" % label)
     except Exception as e:
-        bad("pynq GPIO.get_gpio_base() error: %r" % e)
+        bad("pynq GPIO.get_gpio_base(%r) error: %r" % (label, e))
 
 
 if __name__ == "__main__":

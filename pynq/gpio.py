@@ -4,7 +4,7 @@
 import os
 import warnings
 import weakref
-from .ps import CPU_ARCH, ZU_ARCH, ZYNQ_ARCH
+from .ps import CPU_ARCH, ZU_ARCH, ZYNQ_ARCH, _is_versal
 
 
 class _GPIO:
@@ -134,7 +134,9 @@ class GPIO:
 
     """
 
-    if CPU_ARCH == ZYNQ_ARCH:
+    if _is_versal():
+        _GPIO_MIN_USER_PIN = {'versal_gpio': 26, 'pmc_gpio': 52}
+    elif CPU_ARCH == ZYNQ_ARCH:
         _GPIO_MIN_USER_PIN = 54
     elif CPU_ARCH == ZU_ARCH:
         _GPIO_MIN_USER_PIN = 78
@@ -238,16 +240,18 @@ class GPIO:
             The path to the GPIO base.
 
         """
+        if target_label is None and _is_versal():
+            raise ValueError(
+                "target_label must be specified on Versal; use "
+                "'versal_gpio' or 'pmc_gpio'."
+            )
+
         valid_labels = []
         if target_label is not None:
             valid_labels.append(target_label)
         else:
             valid_labels.append('zynqmp_gpio')
             valid_labels.append('zynq_gpio')
-            # Versal's PS GPIO, the analogue of zynqmp_gpio. The PMC also
-            # exposes a 'pmc_gpio' controller; pass it as target_label if
-            # that is the one you want.
-            valid_labels.append('versal_gpio')
 
         for root, dirs, files in os.walk('/sys/class/gpio'):
             for name in dirs:
@@ -315,7 +319,14 @@ class GPIO:
             The Linux Sysfs GPIO pin number.
 
         """
-        if target_label is not None:
+        if _is_versal():
+            if target_label not in GPIO._GPIO_MIN_USER_PIN:
+                raise ValueError(
+                    "target_label must be specified on Versal; use "
+                    "'versal_gpio' or 'pmc_gpio'."
+                )
+            GPIO_OFFSET = GPIO._GPIO_MIN_USER_PIN[target_label]
+        elif target_label is not None:
             GPIO_OFFSET = 0
         else:
             GPIO_OFFSET = GPIO._GPIO_MIN_USER_PIN
@@ -351,5 +362,4 @@ class GPIO:
             with open(os.path.join(base_path, "ngpio")) as fd:
                 ngpio = fd.read().rstrip()
             return int(''.join(x for x in ngpio if x.isdigit()))
-
 

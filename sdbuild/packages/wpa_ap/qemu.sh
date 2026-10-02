@@ -1,13 +1,14 @@
 #!/bin/bash
 
 if [ -f /etc/default/isc-dhcp-server ] && \
-	grep -q "INTERFACES=" /etc/default/isc-dhcp-server; then
+	grep -q "^INTERFACESv4=" /etc/default/isc-dhcp-server; then
 	if ! grep -q "wlan1" /etc/default/isc-dhcp-server; then
-		sed -i 's/\(INTERFACES=\)"\(.*\)"/\1"\2 wlan1"/g' \
-		/etc/default/isc-dhcp-server
+		sed -i -e 's/^INTERFACESv4="\([^"]\+\)"/INTERFACESv4="\1 wlan1"/' \
+			-e 's/^INTERFACESv4=""/INTERFACESv4="wlan1"/' \
+			/etc/default/isc-dhcp-server
 	fi
 else
-	echo 'INTERFACES="wlan1"' > /etc/default/isc-dhcp-server
+	echo 'INTERFACESv4="wlan1"' >> /etc/default/isc-dhcp-server
 fi
 
 cat - >> /etc/dhcp/dhcpd.conf <<EOT
@@ -27,8 +28,6 @@ iface wlan0 inet dhcp
 	wpa-conf /etc/wpa_supplicant.conf
 EOT
 
-# Uncomment the following lines to enable wireless access point by default.
-# isc-dhcp-server is disabled in the base image by create_rootfs.sh, and the
-# access point needs it to hand out leases on wlan1.
+# Uncomment the following lines to enable wireless access point by default
 # systemctl enable wpa_ap.service
 # systemctl enable isc-dhcp-server

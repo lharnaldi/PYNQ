@@ -421,17 +421,10 @@ class Overlay(Bitstream):
         """
         for i in self.clock_dict:
             if "enable" in self.clock_dict[i]:
-                enable = self.clock_dict[i]["enable"]
-                if "divisor0" in self.clock_dict[i]:
-                    div0 = self.clock_dict[i]["divisor0"]
-                    # Versal has a single divisor stage, so PYNQ-Metadata's
-                    # clock_dict carries divisor0 but no divisor1 for a
-                    # VersalProcSysCore. set_pl_clk already accepts div1=None.
-                    div1 = self.clock_dict[i].get("divisor1")
-                    if enable:
-                        Clocks.set_pl_clk(i, div0, div1)
-                    else:
-                        Clocks.set_pl_clk(i)
+                if self.clock_dict[i]["enable"]:
+                    Clocks.set_pl_clk(i, clk_mhz=self.clock_dict[i]["frequency"])
+                else:
+                    Clocks.set_pl_clk(i)
 
         super().download(self.parser)
         if dtbo:
